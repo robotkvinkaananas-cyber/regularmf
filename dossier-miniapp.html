@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#061226">
+  <meta name="description" content="Telegram Mini App для заказа аналитического бизнес-досье за 1 500 ₽ с передачей заявки @mifor1s.">
+  <title>Досье 360 · Telegram Mini App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-deep: #061226;
+      --bg-mid: #0b1f3f;
+      --surface: rgba(14, 34, 68, 0.78);
+      --surface-strong: #10284f;
+      --surface-hover: #163567;
+      --line: rgba(96, 165, 250, 0.22);
+      --line-bright: rgba(96, 165, 250, 0.58);
+      --text: #f0f6ff;
+      --muted: #9bb5d6;
+      --blue: #2563eb;
+      --blue-bright: #3b82f6;
+      --cyan: #38bdf8;
+      --ice: #dbeafe;
+      --danger: #f87171;
+      --ok: #34d399;
+      --radius: 20px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: dark;
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    @media (pointer: fine) {
+      html {
+        overscroll-behavior: none;
+      }
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100svh;
+      padding: 16px 16px calc(108px + env(safe-area-inset-bottom));
+      overflow-x: hidden;
+      background:
+        radial-gradient(34rem 24rem at 90% -5%, rgba(56, 189, 248, 0.24), transparent 65%),
+        radial-gradient(30rem 24rem at -10% 25%, rgba(37, 99, 235, 0.34), transparent 65%),
+        linear-gradient(180deg, var(--bg-deep), #040b18);
+      color: var(--text);
+      font: 15px/1.55 "Manrope", system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    button, a, input, select, textarea, summary {
+      touch-action: manipulation;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1, h2, h3 {
+      font-family: "Space Grotesk", "Manrope", sans-serif;
+      letter-spacing: -0.02em;
+      line-height: 1.12;
+      text-wrap: balance;
+    }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--cyan);
+      outline-offset: 3px;
+      border-radius: 10px;
+    }
+
+    .app {
+      position: relative;
+      width: min(100%, 540px);
+      margin-inline: auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    /* Ambient floating blue orbs (compositor-friendly transform & opacity) */
+    .orb {
+      position: fixed;
+      z-index: -1;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.28), transparent 70%);
+      filter: blur(22px);
+      pointer-events: none;
+      animation: orbDrift 9s ease-in-out infinite;
+    }
+
+    .orb--right {
+      top: 4%;
+      right: -80px;
+    }
+
+    .orb--left {
+      bottom: 18%;
+      left: -90px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.22), transparent 70%);
+      animation-delay: -4.5s;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(11, 31, 63, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .brand__pulse {
+      position: relative;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan);
+    }
+
+    .brand__pulse::after {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid var(--cyan);
+      content: "";
+      animation: radarPing 2.4s var(--ease) infinite;
+    }
+
+    .curator-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--ice);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Hero Card with Radar Motion Graphic */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 24px 20px;
+      border: 1px solid var(--line-bright);
+      border-radius: 26px;
+      background:
+        radial-gradient(20rem 14rem at 92% 14%, rgba(56, 189, 248, 0.25), transparent 70%),
+        linear-gradient(145deg, #102a56, #081730 72%);
+      box-shadow: 0 24px 48px -22px rgba(2, 8, 23, 0.85);
+    }
+
+    .hero__grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.32);
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      color: var(--ice);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: clamp(24px, 6vw, 31px);
+      margin-bottom: 10px;
+    }
+
+    .hero h1 span {
+      color: var(--cyan);
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .radar {
+      position: relative;
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.3), rgba(6, 18, 38, 0.85));
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .radar::before {
+      position: absolute;
+      inset: 14px;
+      border-radius: 50%;
+      border: 1px dashed rgba(147, 197, 253, 0.38);
+      content: "";
+      animation: spinSlow 16s linear infinite;
+    }
+
+    .radar__sweep {
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0deg 260deg, rgba(56, 189, 248, 0.52) 360deg);
+      animation: spinSlow 3.6s linear infinite;
+    }
+
+    .radar__price {
+      position: relative;
+      z-index: 2;
+      padding: 5px 8px;
+      border-radius: 10px;
+      background: rgba(6, 18, 38, 0.88);
+      color: var(--ice);
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .metrics strong {
+      display: block;
+      color: var(--ice);
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .metrics span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    /* Navigation Tabs inside Mini App */
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(11, 31, 63, 0.7);
+    }
+
+    .seg__btn {
+      min-height: 42px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 14px;
+      transition: background-color 0.25s var(--ease), color 0.25s var(--ease), transform 0.25s var(--ease);
+    }
+
+    .seg__btn[aria-selected="true"] {
+      background: linear-gradient(135deg, var(--blue), #1d4ed8);
+      color: #fff;
+      box-shadow: 0 10px 22px -10px rgba(37, 99, 235, 0.85);
+    }
+
+    /* Cards & Form */
+    .panel {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel[hidden] {
+      display: none;
+    }
+
+    .panel__title {
+      font-size: 18px;
+    }
+
+    .type-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .type-card {
+      min-width: 0;
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      border: 1.5px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-strong);
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      transition:
+        transform 0.25s var(--ease),
+        border-color 0.25s var(--ease),
+        background-color 0.25s var(--ease);
+    }
+
+    .type-card:hover {
+      transform: translateY(-2px);
+      background: var(--surface-hover);
+    }
+
+    .type-card[aria-pressed="true"] {
+      border-color: var(--cyan);
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.34), rgba(16, 40, 79, 0.95));
+    }
+
+    .type-card strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 3px;
+    }
+
+    .type-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .type-card__check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--line-bright);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      font-size: 12px;
+      transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease);
+    }
+
+    .type-card[aria-pressed="true"] .type-card__check {
+      border-color: var(--cyan);
+      background: var(--cyan);
+      color: #041022;
+      font-weight: 900;
+    }
+
+    .field {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ice);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      min-width: 0;
+      min-height: 48px;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      background-color: #081730;
+      color: var(--text);
+      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    }
+
+    .field textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .field input:hover,
+    .field select:hover,
+    .field textarea:hover {
+      border-color: var(--line-bright);
+    }
+
+    .field input:focus-visible,
+    .field select:focus-visible,
+    .field textarea:focus-visible {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.22);
+    }
+
+    .field.is-invalid input {
+      border-color: var(--danger);
+    }
+
+    .error {
+      min-height: 1.1em;
+      color: var(--danger);
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .included {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(6, 18, 38, 0.65);
+      border: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .included b {
+      color: var(--ice);
+    }
+
+    /* FAQ Accordion */
+    .faq-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .faq-list details {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-strong);
+      transition: border-color 0.25s var(--ease);
+    }
+
+    .faq-list details[open] {
+      border-color: var(--cyan);
+    }
+
+    .faq-list summary {
+      display: flex;
+      min-height: 52px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .faq-list summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      transition: transform 0.25s var(--ease), background-color 0.25s var(--ease);
+    }
+
+    .faq-list details[open] .faq-icon {
+      transform: rotate(45deg);
+      background: var(--cyan);
+      color: #041022;
+    }
+
+    .faq-list details p {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+
+    /* Sticky Bottom Checkout Bar */
+    .dock {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 40;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: rgba(6, 18, 38, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .dock__in {
+      width: min(100%, 540px);
+      margin-inline: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .dock__price small {
+      display: block;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dock__price strong {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--ice);
+    }
+
+    .cta-btn {
+      flex: 1;
+      min-height: 50px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--blue-bright), #1d4ed8);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 14.5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 14px 30px -12px rgba(59, 130, 246, 0.85);
+      transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 34px -10px rgba(56, 189, 248, 0.9);
+    }
+
+    .cta-btn:active {
+      transform: scale(0.98);
+    }
+
+    .toast {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(52, 211, 153, 0.45);
+      background: rgba(6, 78, 59, 0.55);
+      color: #d1fae5;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .toast.is-visible {
+      display: block;
+      animation: fadeSlideUp 0.35s var(--ease) both;
+    }
+
+    /* Entrance animations */
+    .stagger {
+      opacity: 0;
+      transform: translateY(18px);
+      animation: fadeSlideUp 0.6s var(--ease) forwards;
+    }
+    .stagger--1 { animation-delay: 0.06s; }
+    .stagger--2 { animation-delay: 0.12s; }
+    .stagger--3 { animation-delay: 0.18s; }
+
+    @keyframes fadeSlideUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spinSlow {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes radarPing {
+      0% { opacity: 0.85; transform: scale(0.9); }
+      100% { opacity: 0; transform: scale(2.1); }
+    }
+
+    @keyframes orbDrift {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(14px, -18px, 0) scale(1.08); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+      }
+      .stagger {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb--right" aria-hidden="true"></div>
+  <div class="orb orb--left" aria-hidden="true"></div>
+
+  <main class="app" id="main">
+    <header class="topbar stagger">
+      <div class="brand" translate="no">
+        <span class="brand__pulse" aria-hidden="true"></span>
+        <span>ДОСЬЕ 360</span>
+      </div>
+      <a class="curator-pill" href="https://t.me/mifor1s" target="_blank" rel="noopener" translate="no">@mifor1s ↗</a>
+    </header>
+
+    <section class="hero stagger stagger--1" aria-labelledby="hero-title">
+      <div class="hero__grid">
+        <div>
+          <span class="badge">Аналитика открытых данных</span>
+          <h1 id="hero-title">Бизнес-досье под ключ за <span class="num">1&nbsp;500&nbsp;₽</span></h1>
+          <p>Проверим компанию, контрагента или проект по реестрам, арбитражным делам и медиаполю. Готовый PDF у куратора <span translate="no">@mifor1s</span>.</p>
+        </div>
+        <div class="radar" role="img" aria-label="Индикатор аналитического сканирования, тариф 1 500 рублей">
+          <div class="radar__sweep" aria-hidden="true"></div>
+          <span class="radar__price num">1&nbsp;500&nbsp;₽</span>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div>
+          <strong class="num">2–6&nbsp;ч</strong>
+          <span>срок сборки</span>
+        </div>
+        <div>
+          <strong class="num">12+</strong>
+          <span>открытых реестров</span>
+        </div>
+        <div>
+          <strong>PDF</strong>
+          <span>удобный отчёт</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="seg stagger stagger--2" role="tablist" aria-label="Разделы приложения">
+      <button class="seg__btn" id="tab-order" type="button" role="tab" aria-selected="true" aria-controls="panel-order" data-tab="order">Оформить заказ</button>
+      <button class="seg__btn" id="tab-faq" type="button" role="tab" aria-selected="false" aria-controls="panel-faq" data-tab="faq">FAQ и правила</button>
+    </div>
+
+    <!-- ORDER PANEL -->
+    <form class="panel stagger stagger--3" id="panel-order" role="tabpanel" aria-labelledby="tab-order" novalidate>
+      <h2 class="panel__title">1. Выберите профиль досье</h2>
+      <div class="type-grid" role="group" aria-label="Тип аналитического досье">
+        <button class="type-card" type="button" aria-pressed="true" data-category="Проверка контрагента (ООО / ИП)">
+          <div>
+            <strong>Проверка контрагента (ООО / ИП)</strong>
+            <span>ЕГРЮЛ, учредители, суды, исполнительные производства и стоп-факторы</span>
+          </div>
+          <span class="type-card__check" aria-hidden="true">✓</span>
+        </button>
+
+        <button class="type-card" type="button" aria-pressed="false" data-category="Разбор бренда или конкурента">
+          <div>
+            <strong>Разбор бренда или конкурента</strong>
+            <span>Публичная структура, домены, упоминания в СМИ, отзывы и позиционирование</span>
+          </div>
+          <span class="type-card__check" aria-hidden="true">✓</span>
+        </button>
+
+        <button class="type-card" type="button" aria-pressed="false" data-category="Инвест-профиль стартапа / проекта">
+          <div>
+            <strong>Инвест-профиль стартапа / проекта</strong>
+            <span>Команда, юридический контур, публичные раунды и репутационный фон</span>
+          </div>
+          <span class="type-card__check" aria-hidden="true">✓</span>
+        </button>
+      </div>
+
+      <div class="field" id="target-field">
+        <label for="target-input">2. Объект проверки (название, ИНН или ссылка)</label>
+        <input id="target-input" name="target" type="text" autocomplete="off" spellcheck="false" placeholder="Например, ООО «Вектор» или ИНН 7701234567…" required minlength="3" aria-describedby="target-err">
+        <p class="error" id="target-err" aria-live="polite"></p>
+      </div>
+
+      <div class="field">
+        <label for="format-select">3. Акцент в отчёте</label>
+        <select id="format-select" name="format" autocomplete="off">
+          <option value="Полный обзор рисков и репутации">Полный обзор рисков и репутации</option>
+          <option value="Упор на суды и финансы">Упор на суды и финансы</option>
+          <option value="Упор на отзывы и медиаполе">Упор на отзывы и медиаполе</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="notes-input">Комментарий для @mifor1s (необязательно)</label>
+        <textarea id="notes-input" name="notes" autocomplete="off" placeholder="Укажите задачу: сделка, партнёрство, тендер…"></textarea>
+      </div>
+
+      <div class="included">
+        <div><b>Фиксированная стоимость:</b> <span class="num" id="price-inline">1&nbsp;500&nbsp;₽</span> без скрытых доплат.</div>
+        <div><b>Куда уходит заказ:</b> заявка передаётся напрямую куратору <b translate="no">@mifor1s</b> в Telegram.</div>
+      </div>
+
+      <p class="toast" id="order-toast" role="status" aria-live="polite"></p>
+    </form>
+
+    <!-- FAQ PANEL -->
+    <section class="panel" id="panel-faq" role="tabpanel" aria-labelledby="tab-faq" hidden>
+      <h2 class="panel__title">Частые вопросы (FAQ)</h2>
+      <div class="faq-list">
+        <details open>
+          <summary>Что входит в досье за 1&nbsp;500&nbsp;₽? <span class="faq-icon" aria-hidden="true">+</span></summary>
+          <p>Структурированный PDF-документ на 6–12 страниц: карточка организации, связи руководителей, арбитражные споры, долги ФССП, публичные упоминания и резюме аналитика.</p>
+        </details>
+        <details>
+          <summary>Насколько легальна такая проверка? <span class="faq-icon" aria-hidden="true">+</span></summary>
+          <p>Полностью легальна. Мы собираем и систематизируем исключительно открытые государственные реестры, судебные базы и публичные публикации в СМИ.</p>
+        </details>
+        <details>
+          <summary>Как происходит оплата и связь с @mifor1s? <span class="faq-icon" aria-hidden="true">+</span></summary>
+          <p>После нажатия кнопки внизу бот регистрирует номер заказа и открывает диалог с @mifor1s с уже заполненным текстом вашей заявки на сумму 1&nbsp;500&nbsp;₽.</p>
+        </details>
+        <details>
+          <summary>Как быстро будет готов отчёт? <span class="faq-icon" aria-hidden="true">+</span></summary>
+          <p>Обычно от 2 до 6 рабочих часов с момента подтверждения деталей заказа у куратора.</p>
+        </details>
+        <details>
+          <summary>Что делать, если у меня только ссылка на сайт? <span class="faq-icon" aria-hidden="true">+</span></summary>
+          <p>Вставьте ссылку или название бренда в поле объекта. Аналитик самостоятельно установит юридическое лицо по публичной оферте и доменным данным.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <div class="dock">
+    <div class="dock__in">
+      <div class="dock__price">
+        <small>Итого к оплате</small>
+        <strong class="num" id="dock-price">1&nbsp;500&nbsp;₽</strong>
+      </div>
+      <button class="cta-btn" id="submit-order" type="button">
+        <span>Направить @mifor1s</span>
+        <span aria-hidden="true">→</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const MANAGER = "mifor1s";
+      const PRICE_RUB = 1500;
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        if (typeof tg.setHeaderColor === "function") {
+          try { tg.setHeaderColor("#061226"); } catch {}
+        }
+      }
+
+      // Format 1 500 ₽ via Intl.NumberFormat
+      const formattedPrice = new Intl.NumberFormat("ru-RU", {
+        style: "currency",
+        currency: "RUB",
+        maximumFractionDigits: 0
+      }).format(PRICE_RUB);
+      document.getElementById("dock-price").textContent = formattedPrice;
+      document.getElementById("price-inline").textContent = formattedPrice;
+
+      // Tabs with URL sync (?tab=faq)
+      const tabButtons = [...document.querySelectorAll(".seg__btn")];
+      const panels = {
+        order: document.getElementById("panel-order"),
+        faq: document.getElementById("panel-faq")
+      };
+
+      const switchTab = (name, pushUrl = true) => {
+        const active = name === "faq" ? "faq" : "order";
+        tabButtons.forEach((btn) => {
+          const selected = btn.dataset.tab === active;
+          btn.setAttribute("aria-selected", String(selected));
+        });
+        panels.order.hidden = active !== "order";
+        panels.faq.hidden = active !== "faq";
+
+        if (pushUrl) {
+          const url = new URL(window.location.href);
+          if (active === "order") url.searchParams.delete("tab");
+          else url.searchParams.set("tab", active);
+          try { window.history.replaceState({}, "", `${url.pathname}${url.search}`); } catch {}
+        }
+      };
+
+      switchTab(new URLSearchParams(window.location.search).get("tab") || "order", false);
+      tabButtons.forEach((btn) => {
+        btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+      });
+
+      // Category selection
+      const typeCards = [...document.querySelectorAll(".type-card")];
+      let selectedCategory = typeCards[0].dataset.category;
+
+      typeCards.forEach((card) => {
+        card.addEventListener("click", () => {
+          selectedCategory = card.dataset.category;
+          typeCards.forEach((c) => c.setAttribute("aria-pressed", String(c === card)));
+          if (tg && tg.HapticFeedback) {
+            try { tg.HapticFeedback.selectionChanged(); } catch {}
+          }
+        });
+      });
+
+      // Validation & Order dispatch to @mifor1s
+      const targetInput = document.getElementById("target-input");
+      const targetField = document.getElementById("target-field");
+      const targetErr = document.getElementById("target-err");
+      const formatSelect = document.getElementById("format-select");
+      const notesInput = document.getElementById("notes-input");
+      const submitBtn = document.getElementById("submit-order");
+      const toast = document.getElementById("order-toast");
+
+      const setTargetError = (msg) => {
+        targetErr.textContent = msg;
+        targetInput.setAttribute("aria-invalid", String(Boolean(msg)));
+        targetField.classList.toggle("is-invalid", Boolean(msg));
+      };
+
+      targetInput.addEventListener("input", () => {
+        if (targetInput.value.trim().length >= 3) setTargetError("");
+      });
+
+      const submitOrder = () => {
+        // If user is on FAQ tab, switch back to Order tab first
+        if (panels.order.hidden) {
+          switchTab("order");
+          targetInput.focus();
+          return;
+        }
+
+        const targetVal = targetInput.value.trim();
+        if (targetVal.length < 3) {
+          setTargetError("Укажите название компании, ИНН или ссылку (минимум 3 символа)");
+          targetInput.focus();
+          if (tg && tg.HapticFeedback) {
+            try { tg.HapticFeedback.notificationOccurred("error"); } catch {}
+          }
+          return;
+        }
+        setTargetError("");
+
+        const orderCode = String(Date.now()).slice(-5);
+        const payload = {
+          orderId: orderCode,
+          category: selectedCategory,
+          target: targetVal,
+          format: formatSelect.value,
+          notes: notesInput.value.trim(),
+          price: PRICE_RUB,
+          manager: `@${MANAGER}`
+        };
+
+        const dmText = [
+          `Здравствуйте, @${MANAGER}! Заказ из Mini App «Досье 360» #${orderCode}.`,
+          `Профиль: ${payload.category}`,
+          `Объект: ${payload.target}`,
+          `Акцент: ${payload.format}`,
+          payload.notes ? `Комментарий: ${payload.notes}` : "",
+          `Сумма заказа: ${formattedPrice}`
+        ].filter(Boolean).join("\n");
+
+        const dmUrl = `https://t.me/${MANAGER}?text=${encodeURIComponent(dmText)}`;
+
+        toast.textContent = `Заявка #${orderCode} на ${formattedPrice} готова! Перенаправляем в чат с @${MANAGER}…`;
+        toast.classList.add("is-visible");
+
+        if (tg && tg.HapticFeedback) {
+          try { tg.HapticFeedback.notificationOccurred("success"); } catch {}
+        }
+
+        // Send structured data to bot if opened via ReplyKeyboard WebApp, and open @mifor1s chat
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.query_id) {
+          if (typeof tg.openTelegramLink === "function") {
+            tg.openTelegramLink(dmUrl);
+          } else {
+            window.open(dmUrl, "_blank", "noopener");
+          }
+        } else if (tg && typeof tg.sendData === "function" && tg.platform && tg.platform !== "unknown") {
+          try {
+            tg.sendData(JSON.stringify(payload));
+          } catch {
+            window.open(dmUrl, "_blank", "noopener");
+          }
+        } else {
+          window.open(dmUrl, "_blank", "noopener");
+        }
+      };
+
+      submitBtn.addEventListener("click", submitOrder);
+      panels.order.addEventListener("submit", (e) => {
+        e.preventDefault();
+        submitOrder();
+      });
+    })();
+  </script>
+</body>
+</html>
